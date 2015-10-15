@@ -173,7 +173,6 @@ int main(int argc, char **argv)
     rep.replaywin_bitmap = replaywin_bitmap;
 
     sodium_init();
-    //fd_debug = open("./decrypto.dump", O_WRONLY | O_CREAT | O_TRUNC);
     rep_count = bad_count = notify = 0;
     gettimeofday(&now_t, NULL);
     last_sec = now_t.tv_sec;
