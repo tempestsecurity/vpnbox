@@ -7,9 +7,7 @@
 #include <linux/fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-
-#define write_str(fd,str)    write((fd),(str),strlen(str))
-#define write_cstr(fd,str)   write((fd),(str),sizeof(str)-1)
+#include "writestr.h"
 
 #define BUF_SIZE	4096
 #define MAX_KEY_SIZE	512
