@@ -28,7 +28,7 @@
 
 #define BUF_SIZE 4096
 
-int tap_alloc(char *dev, char *name, int owner)
+int tap_alloc(char *dev, char *name, int owner, int tun)
 {
     struct ifreq ifr;
     int fd, err;
@@ -48,7 +48,7 @@ int tap_alloc(char *dev, char *name, int owner)
     /* preparation of the struct ifr, of type "struct ifreq" */
     memset(&ifr, 0, sizeof(ifr));
 
-    ifr.ifr_flags = IFF_TAP|IFF_NO_PI;   /* IFF_TUN or IFF_TAP, plus maybe IFF_NO_PI */
+    ifr.ifr_flags = tun | IFF_NO_PI;   /* IFF_TUN or IFF_TAP, plus maybe IFF_NO_PI */
 
     if (*dev) {
         /* if a device name was specified, put it in the structure; otherwise,
@@ -88,28 +88,45 @@ int main(int argc, char **argv)
 {
     char buf[BUF_SIZE], dev[IFNAMSIZ], tapdev[10];
     struct pollfd event[2];
-    int tap, r;
+    int tap, r, tun = IFF_TAP;
 
     strcpy(dev, "/dev/net/tun");
+    if (argc >= 2 || strcmp("tunio", argv[0])==0) {
+        if (strcmp("-tun", argv[1])==0) {
+            argc--;
+            tun = IFF_TUN;
+            if (argc == 2) {
+                argv[1] = argv[2];
+            }
+        }
+    }
     if (argc == 2) {
         write(STDERR_FILENO, "Forced to ", 10);
         write(STDERR_FILENO, argv[1], strlen(argv[1]));
         write(STDERR_FILENO, "\n", 1);
         strcpy(tapdev, argv[1]);
-        tap = tap_alloc (dev, tapdev, 1000);
+        tap = tap_alloc (dev, tapdev, 1000, tun);
     } else {
         strstart(tapdev);
         for (r=0 ; r<1000 ; r++) {
             strarray(tapdev);
-            strannex(tapdev, "tap");
+            if (tun) {
+                strannex(tapdev, "tun");
+            } else {
+                strannex(tapdev, "tap");
+            }
             strannex_uint(tapdev, r);
-            tap = tap_alloc (dev, tapdev, 1000);
+            tap = tap_alloc (dev, tapdev, 1000, tun);
             if (tap > 0) break; // success
         }
     }
     if (tap <= 0) {
-        write(STDERR_FILENO, "Cannot open TAP\n", 16);
-        return tap;
+        if (tun) {
+            write(STDERR_FILENO, "Cannot open TUN\n", 16);
+        } else {
+            write(STDERR_FILENO, "Cannot open TAP\n", 16);
+        }
+        return errno;
     }
 
     memset(&event, 0, sizeof(struct pollfd));
