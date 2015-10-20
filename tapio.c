@@ -102,6 +102,7 @@ int main(int argc, char **argv)
     }
         
     if (argc == 2) {
+        if (!strncmp(argv[1],"/dev/",5)) argv[1] += 5;
         write(STDERR_FILENO, "Forced to ", 10);
         write(STDERR_FILENO, argv[1], strlen(argv[1]));
         write(STDERR_FILENO, "\n", 1);
