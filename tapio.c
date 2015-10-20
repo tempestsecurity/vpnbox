@@ -106,7 +106,9 @@ int main(int argc, char **argv)
         write(STDERR_FILENO, "Forced to ", 10);
         write(STDERR_FILENO, argv[1], strlen(argv[1]));
         write(STDERR_FILENO, "\n", 1);
-        strcpy(tapdev, argv[1]);
+        strstart(tapdev);
+        strarray(tapdev);
+        strannex(tapdev,argv[1]);
         tap = tap_alloc (dev, tapdev, 1000, tun);
     } else {
         strstart(tapdev);
