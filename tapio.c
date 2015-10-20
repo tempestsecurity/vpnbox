@@ -90,12 +90,15 @@ int main(int argc, char **argv)
     char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[10];
     struct pollfd event[2];
     int tap, r, tun = IFF_TUN;    
-    int c, verbose = 0;
+    int c, verbose = 0, have_length;
     
-    while ( (c=getopt(argc,argv,"v")) != -1 ) {
+    while ( (c=getopt(argc,argv,"vl")) != -1 ) {
         switch (c) {
             case 'v':
                 verbose++;
+                break;
+            case 'l':
+                have_length++;
                 break;
         }
     }    
@@ -142,29 +145,70 @@ int main(int argc, char **argv)
     event[1].fd = tap;
     event[1].events = POLLIN | POLLERR | POLLRDHUP | POLLHUP | POLLNVAL;
 
-    for(;;) {
-        r = poll(event, 2, -1);
-        if(r == -1) {
-            write(STDERR_FILENO, "poll() error.\n", 14);
-            return -1;
-        }
-        if (event[0].revents & (POLLERR | POLLRDHUP | POLLHUP | POLLNVAL)) {
-            return 0;
-        }
-        if (event[0].revents & POLLIN) {
-            r = read(STDIN_FILENO, buf, BUF_SIZE);
-            if (r > 0) {
-                write(tap, buf, r);
-            } else if (r < 0) {
-                return 1;
+    if (have_length) {
+        /* ------------ main loop with length ---------- */
+        for (;;) {
+            r = poll(event, 2, -1);
+            if (r == -1) {
+                write(STDERR_FILENO, "poll() error.\n", 14);
+                return -1;
+            }
+            if (event[0].revents & (POLLERR | POLLRDHUP | POLLHUP | POLLNVAL)) {
+                return 0;
+            }
+            if (event[0].revents & POLLIN) {
+                unsigned short len;
+                if (read(STDIN_FILENO,&len,2)==2) {
+                    len = ntohs(len);
+                    if (len>BUF_SIZE) len=BUF_SIZE;
+                    r = read(STDIN_FILENO, buf, len);
+                    if (r > 0) {
+                        write(tap, buf, r);
+                    } else if (r < 0) {
+                        return 1;
+                    }
+                } else {
+                    return 1;
+                }
+            }
+            if (event[1].revents & POLLIN) {
+                r = read(tap, buf+2, BUF_SIZE-6);
+                if (r > 0) {
+                    unsigned short len = htons(r);
+                    unsigned short *p  = (unsigned short *)buf;
+                    p[0] = len;
+                    write(STDOUT_FILENO, buf, r+2);
+                } else if (r < 0) {
+                    return 2;
+                }
             }
         }
-        if (event[1].revents & POLLIN) {
-            r = read(tap, buf, BUF_SIZE);
-            if (r > 0) {
-                write(STDOUT_FILENO, buf, r);
-            } else if (r < 0) {
-                return 2;
+    } else {
+        /* ------------ main loop without length ---------- */
+        for (;;) {
+            r = poll(event, 2, -1);
+            if(r == -1) {
+                write(STDERR_FILENO, "poll() error.\n", 14);
+                return -1;
+            }
+            if (event[0].revents & (POLLERR | POLLRDHUP | POLLHUP | POLLNVAL)) {
+                return 0;
+            }
+            if (event[0].revents & POLLIN) {
+                r = read(STDIN_FILENO, buf, BUF_SIZE);
+                if (r > 0) {
+                    write(tap, buf, r);
+                } else if (r < 0) {
+                    return 1;
+                }
+            }
+            if (event[1].revents & POLLIN) {
+                r = read(tap, buf, BUF_SIZE);
+                if (r > 0) {
+                    write(STDOUT_FILENO, buf, r);
+                } else if (r < 0) {
+                    return 2;
+                }
             }
         }
     }
