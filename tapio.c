@@ -41,6 +41,7 @@ int tap_alloc(char *dev, char *name, int owner, int tun)
      */
 
     /* open the clone device */
+
     if( (fd = open(dev, O_RDWR | O_EXCL)) < 0 ) {
         return fd;
     }
@@ -72,7 +73,7 @@ int tap_alloc(char *dev, char *name, int owner, int tun)
         close(fd);
         return err;
     }
-
+    
     /* if the operation was successful, write back the name of the
      * interface to the variable "dev", so the caller can know
      * it. Note that the caller MUST reserve space in *dev (see calling
@@ -86,29 +87,31 @@ int tap_alloc(char *dev, char *name, int owner, int tun)
 
 int main(int argc, char **argv)
 {
-    char buf[BUF_SIZE], dev[IFNAMSIZ], tapdev[10];
+    char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[10];
     struct pollfd event[2];
-    int tap, r, tun = IFF_TAP;
-
-    strcpy(dev, "/dev/net/tun");
-    if (argc >= 2 || strcmp("tunio", argv[0])==0) {
-        if (strcmp("-tun", argv[1])==0) {
-            argc--;
-            tun = IFF_TUN;
-            if (argc == 2) {
-                argv[1] = argv[2];
-            }
+    int tap, r, tun = IFF_TUN;    
+    int c, verbose = 0;
+    
+    while ( (c=getopt(argc,argv,"v")) != -1 ) {
+        switch (c) {
+            case 'v':
+                verbose++;
+                break;
         }
-    }
-        
-    if (argc == 2) {
-        if (!strncmp(argv[1],"/dev/",5)) argv[1] += 5;
-        write(STDERR_FILENO, "Forced to ", 10);
-        write(STDERR_FILENO, argv[1], strlen(argv[1]));
-        write(STDERR_FILENO, "\n", 1);
+    }    
+
+    if (strcmp("tunio", argv[0]) && strcmp("./tunio",argv[0])) tun = IFF_TAP;
+    
+    if (argc>optind) {
+        if (!strncmp(argv[optind],"/dev/",5)) argv[optind] += 5;
+        if (verbose) {
+            write_cstr(STDERR_FILENO, "Forced to ");
+            write_str(STDERR_FILENO,argv[optind]);
+            write_cstr(STDERR_FILENO, "\n");
+        }
         strstart(tapdev);
         strarray(tapdev);
-        strannex(tapdev,argv[1]);
+        strannex(tapdev,argv[optind]);
         tap = tap_alloc (dev, tapdev, 1000, tun);
     } else {
         strstart(tapdev);
@@ -130,7 +133,7 @@ int main(int argc, char **argv)
         } else {
             write(STDERR_FILENO, "Cannot open TAP\n", 16);
         }
-        return errno;
+        return 1;
     }
 
     memset(&event, 0, sizeof(struct pollfd));
