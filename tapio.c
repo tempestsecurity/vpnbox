@@ -100,6 +100,7 @@ int main(int argc, char **argv)
             }
         }
     }
+        
     if (argc == 2) {
         write(STDERR_FILENO, "Forced to ", 10);
         write(STDERR_FILENO, argv[1], strlen(argv[1]));
@@ -121,7 +122,7 @@ int main(int argc, char **argv)
         }
     }
     if (tap <= 0) {
-        if (tun) {
+        if (tun == IFF_TUN) {
             write(STDERR_FILENO, "Cannot open TUN\n", 16);
         } else {
             write(STDERR_FILENO, "Cannot open TAP\n", 16);
