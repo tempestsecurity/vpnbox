@@ -28,7 +28,7 @@
 
 #define BUF_SIZE 4096
 
-int tap_alloc(char *dev, char *name, int owner, int tun)
+int tap_alloc(char *dev, char *name, int tun)
 {
     struct ifreq ifr;
     int fd, err;
@@ -65,11 +65,6 @@ int tap_alloc(char *dev, char *name, int owner, int tun)
     }
 
     if ((err = ioctl(fd, TUNSETPERSIST, 1)) < 0) {
-        close(fd);
-        return err;
-    }
-
-    if ((err = ioctl(fd, TUNSETOWNER, owner)) < 0) {
         close(fd);
         return err;
     }
@@ -115,7 +110,7 @@ int main(int argc, char **argv)
         strstart(tapdev);
         strarray(tapdev);
         strannex(tapdev,argv[optind]);
-        tap = tap_alloc (dev, tapdev, 1000, tun);
+        tap = tap_alloc (dev, tapdev, tun);
     } else {
         strstart(tapdev);
         for (r=0 ; r<1000 ; r++) {
@@ -126,7 +121,7 @@ int main(int argc, char **argv)
                 strannex(tapdev, "tap");
             }
             strannex_uint(tapdev, r);
-            tap = tap_alloc (dev, tapdev, 1000, tun);
+            tap = tap_alloc (dev, tapdev, tun);
             if (tap > 0) break; // success
         }
     }
