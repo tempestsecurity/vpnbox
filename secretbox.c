@@ -151,7 +151,7 @@ int main(int argc, char **argv)
                 if (r > 0) {
                     memset(buf, 0, crypto_secretbox_ZEROBYTES);
                     sodium_increment(nonce, sizeof(uint64_t)+sizeof(uint32_t));
-                    int ret = crypto_secretbox(crypt+8,buf,r+crypto_secretbox_ZEROBYTES,nonce,key);
+                    int ret = crypto_secretbox_xsalsa20poly1305(crypt+8,buf,r+crypto_secretbox_ZEROBYTES,nonce,key);
                     if (ret == 0) {
                         memcpy(crypt, nonce, sizeof(nonce));
                         write(STDOUT_FILENO, crypt, r+8+crypto_secretbox_ZEROBYTES);
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
             seq -= init_seq;
             if (check_replay_window (&rep, seq)) {
                 memset(crypt+8, 0, crypto_secretbox_BOXZEROBYTES);
-                int ret = crypto_secretbox_open(buf,crypt+8,r-8,nonce,key);
+                int ret = crypto_secretbox_xsalsa20poly1305_open(buf,crypt+8,r-8,nonce,key);
                 if (ret == 0) {
                     update_replay_window (&rep, seq);
                     write(pipe_in[STDOUT_FILENO], buf+crypto_secretbox_ZEROBYTES, r-sizeof(nonce));
