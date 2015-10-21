@@ -115,7 +115,7 @@ int main(int argc, char **argv)
         strstart(tapdev);
         for (r=0 ; r<1000 ; r++) {
             strarray(tapdev);
-            if (tun) {
+            if (tun == IFF_TUN) {
                 strannex(tapdev, "tun");
             } else {
                 strannex(tapdev, "tap");
