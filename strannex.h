@@ -16,7 +16,11 @@
             #define rawmemchr(s,c) memchr(s, c, 0x7FFFFFF)
         #endif // __x86_64__
     #else  // __DIETREFDEF_H__
-        void *rawmemchr(const void *s, int c);
+        #ifdef __i386__
+            void *rawmemchr(const void *s, int c);
+        #else  // __i386__ not intel, maybe cross compiling
+            #define rawmemchr(s,c) memchr(s, c, 0x7FFFFFF)
+        #endif // __i386__
     #endif // __DIETREFDEF_H__
 
     #ifndef my_strlen
