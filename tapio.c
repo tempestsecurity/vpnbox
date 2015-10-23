@@ -142,6 +142,8 @@ int main(int argc, char **argv)
 
     if (have_length) {
         /* ------------ main loop with length ---------- */
+        char fifo[4*BUF_SIZE];
+        char *head = fifo, *tail = fifo;
         for (;;) {
             r = poll(event, 2, -1);
             if (r == -1) {
@@ -152,18 +154,46 @@ int main(int argc, char **argv)
                 return 0;
             }
             if (event[0].revents & POLLIN) {
-                unsigned short len;
-                if (read(STDIN_FILENO,&len,2)==2) {
-                    len = ntohs(len);
-                    if (len>BUF_SIZE) len=BUF_SIZE;
-                    r = read(STDIN_FILENO, buf, len);
-                    if (r > 0) {
-                        write(tap, buf, r);
-                    } else if (r < 0) {
-                        return 1;
+                r = read(STDIN_FILENO, buf, BUF_SIZE);
+                if (r>0) {
+                    // fifo.push(buf);
+                    int excess = (tail+r) - (fifo+sizeof(fifo));
+                    if (excess<=0) {
+                        memcpy(tail,buf,r);
+                        tail += r;
+                        if (tail >= fifo+sizeof(fifo)) tail -= sizeof(fifo);
+                    } else {
+                        int slicelen = r-excess;
+                        memcpy(tail,buf,slicelen);
+                        memcpy(fifo,buf+r-excess,excess);
+                        tail = fifo + excess;
                     }
                 } else {
                     return 1;
+                }
+                for (;;) {
+                    int n = tail - head;
+                    if (n<0) n += sizeof(fifo);
+                    if (n<=2) break;
+                    char *p = head;
+                    unsigned int len = 0xF00 & ((*p++)<<8);
+                    if (p>=fifo+sizeof(fifo)) p = fifo;
+                    len |= (*p)&0xFF;
+                    // FIXME: if (len==0 || len>4000) ...
+                    if (n<len+2) break;
+                    int excess = (head+2+len) - (fifo+sizeof(fifo));
+                    if (excess<=0) {
+                        write(tap,head+2,len);
+                        head += len+2;
+                    } else {
+                        const struct iovec vec[2] = {
+                            { head+2, len-excess },
+                            { fifo, excess }
+                        };
+                        writev(tap,vec,2);
+                        head = fifo + excess;
+                    }
+                    if (head>=fifo+sizeof(fifo)) head -= sizeof(fifo);
                 }
             }
             if (event[1].revents & POLLIN) {
