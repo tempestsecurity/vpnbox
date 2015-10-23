@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[10];
     struct pollfd event[2];
     int tap, r, tun = IFF_TUN;    
-    int c, verbose = 0, have_length;
+    int c, verbose = 0, have_length = 0;
     
     while ( (c=getopt(argc,argv,"vl")) != -1 ) {
         switch (c) {
