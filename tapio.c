@@ -143,7 +143,9 @@ int main(int argc, char **argv)
     if (have_length) {
         /* ------------ main loop with length ---------- */
         char fifo[4*BUF_SIZE];
-        char *head = fifo, *tail = fifo;
+        char *head  = fifo, *tail  = fifo;
+        char *head2 = NULL;
+        unsigned int len2 = 0;
         for (;;) {
             r = poll(event, 2, -1);
             if (r == -1) {
@@ -154,46 +156,48 @@ int main(int argc, char **argv)
                 return 0;
             }
             if (event[0].revents & POLLIN) {
-                r = read(STDIN_FILENO, buf, BUF_SIZE);
+                if (tail + BUF_SIZE >= fifo+sizeof(fifo)) {
+                    write_cstr(2,"Might not fit!\n"); return 3;
+                }
+                r = read(STDIN_FILENO, tail, BUF_SIZE);
                 if (r>0) {
-                    // fifo.push(buf);
-                    int excess = (tail+r) - (fifo+sizeof(fifo));
-                    if (excess<=0) {
-                        memcpy(tail,buf,r);
-                        tail += r;
-                        if (tail >= fifo+sizeof(fifo)) tail -= sizeof(fifo);
-                    } else {
-                        int slicelen = r-excess;
-                        memcpy(tail,buf,slicelen);
-                        memcpy(fifo,buf+r-excess,excess);
-                        tail = fifo + excess;
-                    }
+                    tail += r;
                 } else {
                     return 1;
                 }
                 for (;;) {
-                    int n = tail - head;
-                    if (n<0) n += sizeof(fifo);
+                    int n = tail - head + len2;
                     if (n<=2) break;
-                    char *p = head;
+                    char *p = head2 ? head2 : head;
                     unsigned int len = 0xF00 & ((*p++)<<8);
-                    if (p>=fifo+sizeof(fifo)) p = fifo;
+                    if (head2 && p>=head2+len2) p = fifo;
                     len |= (*p)&0xFF;
                     // FIXME: if (len==0 || len>4000) ...
                     if (n<len+2) break;
-                    int excess = (head+2+len) - (fifo+sizeof(fifo));
-                    if (excess<=0) {
-                        write(tap,head+2,len);
-                        head += len+2;
-                    } else {
+                    if (len2) {
+                        if (len2<2) break;
                         const struct iovec vec[2] = {
-                            { head+2, len-excess },
-                            { fifo, excess }
+                            { head2+2, len2-2      },
+                            { head,    len-len2+2  }
                         };
                         writev(tap,vec,2);
-                        head = fifo + excess;
+                        head += len-len2+2;
+                        head2 = NULL;
+                        len2  = 0;
+                    } else {
+                        write(tap,head+2,len);
+                        head += len+2;
                     }
-                    if (head>=fifo+sizeof(fifo)) head -= sizeof(fifo);
+                }
+                if (len2 == 1) continue;
+                if (head == tail) {
+                    head = tail = fifo;
+                } else {
+                    if (head > fifo+2*BUF_SIZE) {
+                        head2 = head;
+                        len2  = tail - head;
+                        head  = tail = fifo;
+                    }
                 }
             }
             if (event[1].revents & POLLIN) {
