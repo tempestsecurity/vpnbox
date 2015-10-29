@@ -119,6 +119,38 @@ int main(int argc, char **argv)
             write_cstr(STDERR_FILENO,"unable to fork.\n");
             return(-1);
         case 0:
+            memset(buf, 0, sizeof(buf));
+            memset(crypt, 0, sizeof(crypt));
+            r = fork();
+            switch(r) {
+                case -1:
+                    write_cstr(STDERR_FILENO,"unable to fork.\n");
+                    return(-1);
+                case 0: // child to do the cryptography.
+                    close(pipe_in [STDIN_FILENO]);
+                    close(pipe_in [STDOUT_FILENO]);
+                    close(pipe_out[STDOUT_FILENO]);
+                    close(STDIN_FILENO);
+                    sodium_init();
+                    randombytes_buf(nonce, sizeof(nonce));
+                    for(;;) {
+                        r = read(pipe_out[STDIN_FILENO], buf+crypto_secretbox_ZEROBYTES, BUF_SIZE-crypto_secretbox_ZEROBYTES);
+                        if (r > 0) {
+                            memset(buf, 0, crypto_secretbox_ZEROBYTES);
+                            sodium_increment(nonce, sizeof(uint64_t)+sizeof(uint32_t));
+                            int ret = crypto_secretbox_xsalsa20poly1305(crypt+8,buf,r+crypto_secretbox_ZEROBYTES,nonce,key);
+                            if (ret == 0) {
+                                memcpy(crypt, nonce, sizeof(nonce));
+                                write(STDOUT_FILENO, crypt, r+8+crypto_secretbox_ZEROBYTES);
+                            } else {
+                                fprintf (stderr, "Erro crypto_secretbox = %d.\n", ret);
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    return 0;
+            }
             if (dup2(pipe_in[STDIN_FILENO], STDIN_FILENO) == -1) {
                 write_cstr(STDERR_FILENO,"unable to move descriptor to stdin.\n");
                 return(-1);
@@ -133,37 +165,6 @@ int main(int argc, char **argv)
     }
     close(pipe_in [STDIN_FILENO]);
     close(pipe_out[STDOUT_FILENO]);
-
-    memset(buf, 0, sizeof(buf));
-    memset(crypt, 0, sizeof(crypt));
-    r = fork();
-    switch(r) {
-        case -1:
-            write_cstr(STDERR_FILENO,"unable to fork.\n");
-            return(-1);
-        case 0:
-            close(pipe_in[STDOUT_FILENO]);
-            close(STDIN_FILENO);
-            sodium_init();
-            randombytes_buf(nonce, sizeof(nonce));
-            for(;;) {
-                r = read(pipe_out[STDIN_FILENO], buf+crypto_secretbox_ZEROBYTES, BUF_SIZE-crypto_secretbox_ZEROBYTES);
-                if (r > 0) {
-                    memset(buf, 0, crypto_secretbox_ZEROBYTES);
-                    sodium_increment(nonce, sizeof(uint64_t)+sizeof(uint32_t));
-                    int ret = crypto_secretbox_xsalsa20poly1305(crypt+8,buf,r+crypto_secretbox_ZEROBYTES,nonce,key);
-                    if (ret == 0) {
-                        memcpy(crypt, nonce, sizeof(nonce));
-                        write(STDOUT_FILENO, crypt, r+8+crypto_secretbox_ZEROBYTES);
-                    } else {
-                        fprintf (stderr, "Erro crypto_secretbox = %d.\n", ret);
-                    }
-                } else {
-                    break;
-                }
-            }
-            return 0;
-    }
     close(pipe_out[STDIN_FILENO]);
     close(STDOUT_FILENO);
 
