@@ -36,7 +36,7 @@ else
 	LIBSODIUM += libsodium/crypto_core/salsa20/ref/core_salsa20.c
 endif
 
-all: tapio xorbox secretbox
+all: tapio xorbox secretbox unbundle
 
 tapio: tapio.c strannex.h writestr.h strannex.c
 	$(CC) $(CFLAGS) -o tapio tapio.c strannex.c
@@ -48,5 +48,8 @@ xorbox: xorbox.c writestr.h
 secretbox: secretbox.c writestr.c strannex.c writestr.h strannex.h
 	$(CC) $(CFLAGS) $(LIBSODIUM) -o secretbox secretbox.c writestr.c 
 
+unbundle: unbundle.c
+	$(CC) $(CFLAGS) -o unbundle unbundle.c
+
 clean:
-	rm -fv tapio tunio xorbox secretbox
+	rm -fv tapio tunio xorbox secretbox unbundle
