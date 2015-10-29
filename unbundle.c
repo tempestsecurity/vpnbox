@@ -7,12 +7,19 @@
 #include <linux/fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
+#include <signal.h>
 #include "writestr.h"
 
 #define MULT		4
 #define BUF_SIZE	4096
 
 #include <stdio.h>
+void signalHandler(int signal)
+{
+    exit (0);
+}
+
 int main(int argc, char **argv)
 {
     int cr = 0, cs = 0;
@@ -36,6 +43,9 @@ int main(int argc, char **argv)
         write_cstr(STDERR_FILENO,"Warning, pipe2 pipe_out failed, using pipe.\n");
         pipe(pipe_out);
     }
+
+    signal(SIGCHLD,signalHandler);
+    signal(SIGPIPE,signalHandler);
 
     r = fork();
     switch(r) {

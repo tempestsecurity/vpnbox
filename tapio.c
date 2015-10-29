@@ -22,6 +22,9 @@
 
 #include <sys/time.h>
 
+#include <stdlib.h>
+#include <signal.h>
+
 #include "strannex.h"
 
 #ifndef POLLRDHUP
@@ -82,6 +85,11 @@ int tap_alloc(char *dev, char *name, int tun)
     return fd;
 }
 
+void signalHandler(int signal)
+{
+    exit (0);
+}
+
 int main(int argc, char **argv)
 {
     char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[10];
@@ -109,6 +117,8 @@ int main(int argc, char **argv)
         write_cstr(STDERR_FILENO, "keep alive need interval value.\n");
         return 1;
     }
+
+    signal(SIGPIPE,signalHandler);
 
     if (strcmp("tunio", argv[0]) && strcmp("./tunio",argv[0])) tun = IFF_TAP;
     

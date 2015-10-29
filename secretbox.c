@@ -11,6 +11,8 @@
 #include <sys/time.h>
 #include "crypto_secretbox.h"
 #include <stdint.h>
+#include <stdlib.h>
+#include <signal.h>
 #include "writestr.h"
 
 #define BUF_SIZE	4096
@@ -37,6 +39,11 @@ void hexdump(int fd, char *buf, int size);
 int check_replay_window (struct replay_s *rep, uint64_t sequence_number);
 
 int update_replay_window (struct replay_s *rep, uint64_t sequence_number);
+
+void signalHandler(int signal)
+{
+    exit (0);
+}
 
 int main(int argc, char **argv)
 {
@@ -109,6 +116,9 @@ int main(int argc, char **argv)
         write_cstr(STDERR_FILENO,"error invalid usage.\n");
         return -1;
     }
+
+    signal(SIGCHLD,signalHandler);
+    signal(SIGPIPE,signalHandler);
 
     if (pipe2(pipe_in,  O_DIRECT) == -1) pipe(pipe_in);
     if (pipe2(pipe_out, O_DIRECT) == -1) pipe(pipe_out);
