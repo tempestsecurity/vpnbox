@@ -20,6 +20,8 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
+#include <sys/time.h>
+
 #include "strannex.h"
 
 #ifndef POLLRDHUP
@@ -85,15 +87,28 @@ int main(int argc, char **argv)
     char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[10];
     struct pollfd event[2];
     int tap, r, tun = IFF_TUN;    
-    int c, verbose = 0;
+    int c, verbose = 0, interval = 0, keep = 0, keep_count = 0;
+    time_t last_keep;
+    struct timeval tv;
     
-    while ( (c=getopt(argc,argv,"v")) != -1 ) {
+    while ( (c=getopt(argc,argv,"vi:k:")) != -1 ) {
         switch (c) {
             case 'v':
                 verbose++;
                 break;
+            case 'i':
+                interval = atoi(optarg);
+                break;
+            case 'k':
+                keep = atoi(optarg);
+                break;
         }
-    }    
+    }
+    
+    if (keep && !interval) {
+        write_cstr(STDERR_FILENO, "keep alive need interval value.\n");
+        return 1;
+    }
 
     if (strcmp("tunio", argv[0]) && strcmp("./tunio",argv[0])) tun = IFF_TAP;
     
@@ -137,9 +152,12 @@ int main(int argc, char **argv)
     event[1].fd = tap;
     event[1].events = POLLIN | POLLERR | POLLRDHUP | POLLHUP | POLLNVAL;
 
+    gettimeofday(&tv, NULL);
+    last_keep = tv.tv_sec;
+
     /* ------------ main loop without length ---------- */
     for (;;) {
-        r = poll(event, 2, -1);
+        r = poll(event, 2, 1000);
         if(r == -1) {
             write(STDERR_FILENO, "poll() error.\n", 14);
             return -1;
@@ -147,9 +165,20 @@ int main(int argc, char **argv)
         if (event[0].revents & (POLLERR | POLLRDHUP | POLLHUP | POLLNVAL)) {
             return 0;
         }
+        if (interval) {
+            gettimeofday(&tv, NULL);
+            if (tv.tv_sec >= (last_keep+interval)) {
+                write(STDOUT_FILENO, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 20);
+                last_keep = tv.tv_sec;
+                keep_count++;
+            }
+        }
         if (event[0].revents & POLLIN) {
             r = read(STDIN_FILENO, buf, BUF_SIZE);
-            if (r > 0) {
+            if (r > 0 && keep) { // reset count on read.
+                keep_count = 0;
+            }
+            if (r > 20) { // ignore packet inferior to 21 bytes, keep alive
                 write(tap, buf, r);
             } else if (r < 0) {
                 return 1;
@@ -162,6 +191,10 @@ int main(int argc, char **argv)
             } else if (r < 0) {
                 return 2;
             }
+        }
+        if (keep_count >= keep) {
+            writeln_str_uint(STDERR_FILENO, "Keep count exceeded ", keep_count);
+            return 0;
         }
     }
     return 0;
