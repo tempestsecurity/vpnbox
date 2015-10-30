@@ -202,7 +202,7 @@ int main(int argc, char **argv)
                 return 2;
             }
         }
-        if (keep_count >= keep) {
+        if (keep && keep_count >= keep) {
             writeln_str_uint(STDERR_FILENO, "Keep count exceeded ", keep_count);
             return 0;
         }
