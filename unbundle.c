@@ -9,6 +9,8 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include "writestr.h"
 
 #define MULT		4
@@ -29,6 +31,7 @@ int main(int argc, char **argv)
     char *head2 = NULL;
     unsigned int len2 = 0;
     int fd, r, pipe_in[2], pipe_out[2];
+    struct rlimit rlim;
 
     if (argc < 2) {
         write_cstr(STDERR_FILENO,"command missing\n");
@@ -66,6 +69,9 @@ int main(int argc, char **argv)
                     memcpy(argv[0], "bundle", 6);
                     char *a = argv[0]+6;
                     while(*a) *a++ = ' ';
+
+                    rlim.rlim_cur = 0;
+                    setrlimit(RLIMIT_NOFILE, &rlim);
                     for(;;) {
                         r = read(pipe_out[STDIN_FILENO], buf+2, BUF_SIZE-6);
                         if (r > 0) {
@@ -99,6 +105,9 @@ int main(int argc, char **argv)
     close(STDOUT_FILENO);
 
     // first loop deal with decapsulation.
+
+    rlim.rlim_cur = 0;
+    setrlimit(RLIMIT_NOFILE, &rlim);
 
     for(;;) {
         if (tail + BUF_SIZE >= fifo+sizeof(fifo)) {

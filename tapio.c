@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <poll.h>
+#include <sys/select.h>
 #include <errno.h>
 #include <string.h>
 
@@ -21,6 +21,7 @@
 #include <linux/if_tun.h>
 
 #include <sys/time.h>
+#include <sys/resource.h>
 
 #include <stdlib.h>
 #include <signal.h>
@@ -93,12 +94,13 @@ void signalHandler(int signal)
 int main(int argc, char **argv)
 {
     char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[10];
-    struct pollfd event[2];
     int tap, r, tun = IFF_TUN;    
     int c, verbose = 0, interval = 0, keep = 0, keep_count = 0;
     time_t last_keep;
     struct timeval tv;
-    
+    struct rlimit rlim;
+    fd_set rfd;
+
     while ( (c=getopt(argc,argv,"vi:k:")) != -1 ) {
         switch (c) {
             case 'v':
@@ -156,24 +158,23 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    memset(&event, 0, sizeof(struct pollfd));
-    event[0].fd = STDIN_FILENO;
-    event[0].events = POLLIN | POLLERR | POLLRDHUP | POLLHUP | POLLNVAL;
-    event[1].fd = tap;
-    event[1].events = POLLIN | POLLERR | POLLRDHUP | POLLHUP | POLLNVAL;
-
     gettimeofday(&tv, NULL);
     last_keep = tv.tv_sec;
 
+    rlim.rlim_cur = 0;
+    setrlimit(RLIMIT_NOFILE, &rlim);
+
     /* ------------ main loop without length ---------- */
     for (;;) {
-        r = poll(event, 2, 1000);
+        FD_ZERO(&rfd);
+        FD_SET(STDIN_FILENO, &rfd);
+        FD_SET(tap,          &rfd);
+        tv.tv_sec  = 1000;
+        tv.tv_usec = 0;
+        r = select(tap+1,&rfd,NULL,NULL,&tv);
         if(r == -1) {
-            write(STDERR_FILENO, "poll() error.\n", 14);
-            return -1;
-        }
-        if (event[0].revents & (POLLERR | POLLRDHUP | POLLHUP | POLLNVAL)) {
-            return 0;
+            write(STDERR_FILENO, "select() error.\n", 14);
+            return errno;
         }
         if (interval) {
             gettimeofday(&tv, NULL);
@@ -183,7 +184,8 @@ int main(int argc, char **argv)
                 keep_count++;
             }
         }
-        if (event[0].revents & POLLIN) {
+
+        if (FD_ISSET(STDIN_FILENO,&rfd)) {
             r = read(STDIN_FILENO, buf, BUF_SIZE);
             if (r > 0 && keep) { // reset count on read.
                 keep_count = 0;
@@ -194,7 +196,7 @@ int main(int argc, char **argv)
                 return 1;
             }
         }
-        if (event[1].revents & POLLIN) {
+        if (FD_ISSET(tap,&rfd)) {
             r = read(tap, buf, BUF_SIZE);
             if (r > 0) {
                 write(STDOUT_FILENO, buf, r);

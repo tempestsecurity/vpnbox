@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #include "crypto_secretbox.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -58,6 +59,7 @@ int main(int argc, char **argv)
     struct timeval now_t;
     time_t last_sec;
     uint32_t rep_count, bad_count, notify;
+    struct rlimit rlim;
 
     struct replay_s rep;
     memset(&rep, 0, sizeof(rep));
@@ -143,6 +145,9 @@ int main(int argc, char **argv)
                     close(STDIN_FILENO);
                     sodium_init();
                     randombytes_buf(nonce, sizeof(nonce));
+
+                    rlim.rlim_cur = 0;
+                    setrlimit(RLIMIT_NOFILE, &rlim);
                     for(;;) {
                         r = read(pipe_out[STDIN_FILENO], buf+crypto_secretbox_ZEROBYTES, BUF_SIZE-crypto_secretbox_ZEROBYTES);
                         if (r > 0) {
@@ -187,6 +192,9 @@ int main(int argc, char **argv)
     rep_count = bad_count = notify = 0;
     gettimeofday(&now_t, NULL);
     last_sec = now_t.tv_sec;
+
+    rlim.rlim_cur = 0;
+    setrlimit(RLIMIT_NOFILE, &rlim);
     for(;;) {
         gettimeofday(&now_t, NULL);
         if (now_t.tv_sec >= (last_sec+10) && notify) {
