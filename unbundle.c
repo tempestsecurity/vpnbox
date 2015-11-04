@@ -79,7 +79,7 @@ int main(int argc, char **argv)
                             unsigned short *p  = (unsigned short *)buf;
                             p[0] = len;
                             write(STDOUT_FILENO, buf, r+2);
-                        } else if (r <= 0) {
+                        } else {
                             return 2;
                         }
                     }

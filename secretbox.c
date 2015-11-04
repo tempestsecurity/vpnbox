@@ -226,6 +226,8 @@ int main(int argc, char **argv)
                 rep_count++;
                 notify++;
             }
+        } else {
+            break;
         }
     }
     return 0;

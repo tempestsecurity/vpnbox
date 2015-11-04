@@ -192,7 +192,7 @@ int main(int argc, char **argv)
             }
             if (r > 20) { // ignore packet inferior to 21 bytes, keep alive
                 write(tap, buf, r);
-            } else if (r < 0) {
+            } else if (r <= 0) {
                 return 1;
             }
         }
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
             r = read(tap, buf, BUF_SIZE);
             if (r > 0) {
                 write(STDOUT_FILENO, buf, r);
-            } else if (r < 0) {
+            } else if (r <= 0) {
                 return 2;
             }
         }
