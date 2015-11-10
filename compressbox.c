@@ -25,7 +25,6 @@ void signalHandler(int signal)
 int main(int argc, char **argv)
 {
     char in[BUF_SIZE], out[BUF_SIZE], work[LZO1X_1_MEM_COMPRESS];
-    lzo_int len;
     lzo_uint ulen;
     int r, pipe_in[2], pipe_out[2];
     struct rlimit rlim;
@@ -71,15 +70,14 @@ int main(int argc, char **argv)
                     }
 
                     for(;;) {
-                        while ((len = read (pipe_out[STDIN_FILENO], in, sizeof(in))) == 0);
-                        if (len > 0) {
-                            lzo1x_1_compress (in, len, out+sizeof(uint16_t), &ulen, work);
-                            ((uint16_t*)out)[0] = htons(ulen);
-                            write (STDOUT_FILENO, out, ulen + sizeof(uint16_t));
-                            //write_str_uint(STDERR_FILENO, "lzo1x_1_compress ", len);
-                            //writeln_str_uint(STDERR_FILENO, ", ", dst_len);
+                        r = read (pipe_out[STDIN_FILENO], in, sizeof(in));
+                        if (r > 0) {
+                            lzo1x_1_compress (in, r, out, &ulen, work);
+                            write (STDOUT_FILENO, out, ulen);
+                            //write_str_uint(STDERR_FILENO, "lzo1x_1_compress r=", r);
+                            //writeln_str_uint(STDERR_FILENO, ", ulen=", ulen);
                         } else {
-                            writeln_str_uint(STDERR_FILENO, "Read error at compression: ", errno);
+                            if (r < 0) writeln_str_uint(STDERR_FILENO, "Read error at reading: ", errno);
                             break;
                         }
                     }
@@ -115,17 +113,18 @@ int main(int argc, char **argv)
     }
 
     for(;;) {
-        if (read (STDIN_FILENO, in, sizeof(in)) > 0) {
-            len = be16toh(((uint16_t*)in)[0]);
-            if (lzo1x_decompress (in+sizeof(uint16_t), len, out, &ulen, work)==LZO_E_OK) {
+        r = read (STDIN_FILENO, in, sizeof(in));
+        if (r > 0) {
+            if (lzo1x_decompress (in, r, out, &ulen, work)==LZO_E_OK) {
                 write (pipe_in[STDOUT_FILENO], out, ulen);
-                //write_str_uint(STDERR_FILENO, "lzo1x_decompress ", ((lzo_uint*)in)[0]);
-                //writeln_str_uint(STDERR_FILENO, ", ", len);
+                //write_str_uint(STDERR_FILENO, "lzo1x_decompress r=", r);
+                //writeln_str_uint(STDERR_FILENO, ", ulen=", ulen);
+            } else {
+                write_str_uint(STDERR_FILENO, "ERROR lzo1x_decompress r=", r);
+                writeln_str_uint(STDERR_FILENO, ", ulen=", ulen);
             }
         } else {
-            write_str_uint(STDERR_FILENO, "Read error at decompression: errno=", errno);
-            write_str_uint(STDERR_FILENO, ", r=", r);
-            writeln_str_uint(STDERR_FILENO, ", len=", len);
+            if (r < 0) write_str_uint(STDERR_FILENO, "Read error at decompression: errno=", errno);
             break;
         }
     }
