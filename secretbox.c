@@ -217,7 +217,7 @@ int main(int argc, char **argv)
                 int ret = crypto_secretbox_xsalsa20poly1305_open(buf,crypt+8,r-8,nonce,key);
                 if (ret == 0) {
                     update_replay_window (&rep, seq);
-                    write(pipe_in[STDOUT_FILENO], buf+crypto_secretbox_ZEROBYTES, r-sizeof(nonce));
+                    write(pipe_in[STDOUT_FILENO], buf+crypto_secretbox_ZEROBYTES, r-sizeof(nonce)-crypto_secretbox_BOXZEROBYTES);
                 } else {
                     bad_count++;
                     notify++;
