@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     setrlimit(RLIMIT_NOFILE, &rlim);
 
     if (lzo_init() != LZO_E_OK) {
-        write (STDERR_FILENO, "Erro initting lzo.\n", 19);
+        write_cstr (STDERR_FILENO, "Erro initting lzo.\n");
         return 1;
     }
 

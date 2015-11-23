@@ -151,9 +151,9 @@ int main(int argc, char **argv)
     }
     if (tap <= 0) {
         if (tun == IFF_TUN) {
-            write(STDERR_FILENO, "Cannot open TUN\n", 16);
+            write_cstr(STDERR_FILENO, "Cannot open TUN\n");
         } else {
-            write(STDERR_FILENO, "Cannot open TAP\n", 16);
+            write_cstr(STDERR_FILENO, "Cannot open TAP\n");
         }
         return 1;
     }
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
         tv.tv_usec = 0;
         r = select(tap+1,&rfd,NULL,NULL,&tv);
         if(r == -1) {
-            write(STDERR_FILENO, "select() error.\n", 14);
+            write_cstr(STDERR_FILENO, "select() error.\n");
             return errno;
         }
         if (interval) {
