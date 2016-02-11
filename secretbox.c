@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
-#include "writestr.h"
+#include "strannex.h"
 
 #define BUF_SIZE	4096
 #define MAX_KEY_SIZE	crypto_secretbox_KEYBYTES
@@ -43,6 +43,7 @@ int update_replay_window (struct replay_s *rep, uint64_t sequence_number);
 
 void signalHandler(int signal)
 {
+    kill(getppid(), SIGPIPE);
     exit (0);
 }
 
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
     unsigned char crypt[BUF_SIZE], *send_buf;
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
     int ksize = 0, c;
-    char buf[BUF_SIZE];
+    char buf[BUF_SIZE], *progname;
     int fd, r, pipe_in[2], pipe_out[2];
     struct stat fd_stat;
     uint64_t seq, init_seq = 0;
@@ -64,8 +65,15 @@ int main(int argc, char **argv)
     struct replay_s rep;
     memset(&rep, 0, sizeof(rep));
 
+    if ((progname = strrchr(argv[0], '/')) == NULL) {
+        progname = argv[0];
+    } else {
+        progname++;
+    }
+
     if (argc < 2) {
-        write_cstr(STDERR_FILENO,"params missing\n");
+        write_str(STDERR_FILENO, progname);
+        write_cstr(STDERR_FILENO,": params missing\n");
         return -1;
     }
 
@@ -75,24 +83,28 @@ int main(int argc, char **argv)
             case 'k':
                 parse_key(key, &ksize, optarg);
                 if (!ksize) {
-                    write_cstr(STDERR_FILENO,"error parsing key.\n");
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO,": error parsing key.\n");
                     return -1;
                 }
                 break;
             case 'K':
                 fd = open(optarg, O_RDONLY);
                 if (fd < 0) {
-                    write_cstr(STDERR_FILENO,"error opening key file.\n");
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO,": error opening key file.\n");
                     return -1;
                 }
                 fstat(fd, &fd_stat);
                 fd_stat.st_mode &= 0x3FFF;
                 if (fd_stat.st_mode != S_IRUSR) {
-                    write_cstr(STDERR_FILENO,"error key file permission\n");
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO,": error key file permission\n");
                     return -1;
                 }
                 if ((r = read (fd, buf, sizeof(buf)-1)) <= 0) {
-                    write_cstr(STDERR_FILENO,"error reading key file.\n");
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO,": error reading key file.\n");
                     return -1;
                 }
                 close (fd);
@@ -105,7 +117,8 @@ int main(int argc, char **argv)
                     rep.replaywin_size = SIZE_OF_INTEGER;
                 }
                 if (rep.replaywin_size % SIZE_OF_INTEGER) {
-                    write_cstr(STDERR_FILENO,"Invalid replay window size.\n");
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO,": Invalid replay window size.\n");
                     return -1;
                 }
                 break;
@@ -115,7 +128,8 @@ int main(int argc, char **argv)
     argv += optind;
 
     if (!ksize || !argv) {
-        write_cstr(STDERR_FILENO,"error invalid usage.\n");
+        write_str(STDERR_FILENO, progname);
+        write_cstr(STDERR_FILENO,": error invalid usage.\n");
         return -1;
     }
 
@@ -128,7 +142,8 @@ int main(int argc, char **argv)
     r = fork();
     switch(r) {
         case -1:
-            write_cstr(STDERR_FILENO,"unable to fork.\n");
+            write_str(STDERR_FILENO, progname);
+            write_cstr(STDERR_FILENO,": unable to fork.\n");
             return(-1);
         case 0:
             memset(buf, 0, sizeof(buf));
@@ -136,7 +151,8 @@ int main(int argc, char **argv)
             r = fork();
             switch(r) {
                 case -1:
-                    write_cstr(STDERR_FILENO,"unable to fork.\n");
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO,": unable to fork.\n");
                     return(-1);
                 case 0: // child to do the cryptography.
                     close(pipe_in [STDIN_FILENO]);
@@ -158,21 +174,26 @@ int main(int argc, char **argv)
                                 memcpy(crypt, nonce, sizeof(nonce));
                                 write(STDOUT_FILENO, crypt, r+8+crypto_secretbox_ZEROBYTES);
                             } else {
-                                fprintf (stderr, "Erro crypto_secretbox = %d.\n", ret);
+                                write_str(STDERR_FILENO, progname);
+                                write_str_uint(STDERR_FILENO, ": Erro crypto_secretbox = ", ret);
+                                write_cstr(STDERR_FILENO, "\n");
                             }
                         } else {
                             break;
                         }
                     }
+                    kill(getppid(), SIGPIPE);
                     return 0;
             }
             if (dup2(pipe_in[STDIN_FILENO], STDIN_FILENO) == -1) {
-                write_cstr(STDERR_FILENO,"unable to move descriptor to stdin.\n");
+                write_str(STDERR_FILENO, progname);
+                write_cstr(STDERR_FILENO,": unable to move descriptor to stdin.\n");
                 return(-1);
             }
             close(pipe_in[STDOUT_FILENO]);
             if (dup2(pipe_out[STDOUT_FILENO], STDOUT_FILENO) == -1) {
-                write_cstr(STDERR_FILENO,"unable to move descriptor to stdout.\n");
+                write_str(STDERR_FILENO, progname);
+                write_cstr(STDERR_FILENO,": unable to move descriptor to stdout.\n");
                 return(-1);
             }
             close(pipe_out[STDIN_FILENO]);
@@ -198,7 +219,8 @@ int main(int argc, char **argv)
     for(;;) {
         gettimeofday(&now_t, NULL);
         if (now_t.tv_sec >= (last_sec+10) && notify) {
-            write_cstr_uint(STDERR_FILENO, "Replay: ", rep_count);
+            write_str(STDERR_FILENO, progname);
+            write_cstr_uint(STDERR_FILENO, ": Replay: ", rep_count);
             writeln_cstr_uint(STDERR_FILENO, ", bad: ", bad_count);
             last_sec = now_t.tv_sec;
             notify = 0;
@@ -230,6 +252,7 @@ int main(int argc, char **argv)
             break;
         }
     }
+    kill(getppid(), SIGPIPE);
     return 0;
 }
 

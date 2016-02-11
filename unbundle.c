@@ -11,7 +11,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include "writestr.h"
+#include "strannex.h"
 
 #define MULT		4
 #define BUF_SIZE	4096
@@ -19,6 +19,7 @@
 #include <stdio.h>
 void signalHandler(int signal)
 {
+    kill(getppid(), SIGPIPE);
     exit (0);
 }
 
@@ -26,24 +27,33 @@ int main(int argc, char **argv)
 {
     int cr = 0, cs = 0;
     char buf[BUF_SIZE];
-    char fifo[MULT*BUF_SIZE];
+    char fifo[MULT*BUF_SIZE], *progname;
     char *head  = fifo, *tail  = fifo;
     char *head2 = NULL;
     unsigned int len2 = 0;
     int fd, r, pipe_in[2], pipe_out[2];
     struct rlimit rlim;
 
+    if ((progname = strrchr(argv[0], '/')) == NULL) {
+        progname = argv[0];
+    } else {
+        progname++;
+    }
+
     if (argc < 2) {
-        write_cstr(STDERR_FILENO,"command missing\n");
+        write_str(STDERR_FILENO, progname);
+        write_cstr(STDERR_FILENO,": command missing\n");
         return -1;
     }
 
     if (pipe2(pipe_in,  O_DIRECT) == -1) {
-        write_cstr(STDERR_FILENO,"Warning, pipe2 pipe_in failed, using pipe.\n");
+        write_str(STDERR_FILENO, progname);
+        write_cstr(STDERR_FILENO,": Warning, pipe2 pipe_in failed, using pipe.\n");
         pipe(pipe_in);
     }
     if (pipe2(pipe_out, O_DIRECT) == -1) {
-        write_cstr(STDERR_FILENO,"Warning, pipe2 pipe_out failed, using pipe.\n");
+        write_str(STDERR_FILENO, progname);
+        write_cstr(STDERR_FILENO,": Warning, pipe2 pipe_out failed, using pipe.\n");
         pipe(pipe_out);
     }
 
@@ -53,13 +63,15 @@ int main(int argc, char **argv)
     r = fork();
     switch(r) {
         case -1:
-            write_cstr(STDERR_FILENO,"unable to fork.\n");
+            write_str(STDERR_FILENO, progname);
+            write_cstr(STDERR_FILENO,": unable to fork.\n");
             return(-1);
         case 0:
             r = fork();
             switch(r) {
                 case -1:
-                    write_cstr(STDERR_FILENO,"unable to fork.\n");
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO,": unable to fork.\n");
                     return(-1);
                 case 0: // children to deal with encapsulation.
                     close(pipe_in [STDIN_FILENO]);
@@ -83,17 +95,20 @@ int main(int argc, char **argv)
                             return 2;
                         }
                     }
+                    kill(getppid(), SIGPIPE);
                     return 0;
             }
 
             // children to deal with exec.
             if (dup2(pipe_in[STDIN_FILENO], STDIN_FILENO) == -1) {
-                write_cstr(STDERR_FILENO,"unable to move descriptor to stdin.\n");
+                write_str(STDERR_FILENO, progname);
+                write_cstr(STDERR_FILENO,": unable to move descriptor to stdin.\n");
                 return(-1);
             }
             close(pipe_in[STDOUT_FILENO]);
             if (dup2(pipe_out[STDOUT_FILENO], STDOUT_FILENO) == -1) {
-                write_cstr(STDERR_FILENO,"unable to move descriptor to stdout.\n");
+                write_str(STDERR_FILENO, progname);
+                write_cstr(STDERR_FILENO,": unable to move descriptor to stdout.\n");
                 return(-1);
             }
             close(pipe_out[STDIN_FILENO]);
@@ -111,12 +126,14 @@ int main(int argc, char **argv)
 
     for(;;) {
         if (tail + BUF_SIZE >= fifo+sizeof(fifo)) {
-            write_cstr(2,"Might not fit!\n"); return 3;
+            write_str(STDERR_FILENO, progname);
+            write_cstr(2,": Might not fit!\n"); return 3;
         }
         r = read(STDIN_FILENO, tail, BUF_SIZE);
         if (r>0) {
             tail += r;
         } else {
+            kill(getppid(), SIGPIPE);
             return 1;
         }
         for (;;) {
@@ -154,5 +171,6 @@ int main(int argc, char **argv)
             }
         }
     }
+    kill(getppid(), SIGPIPE);
     return 0;
 }

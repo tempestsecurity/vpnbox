@@ -3,7 +3,7 @@ ifeq ($(CC), cc)
 	CC := gcc
 endif
 
-CFLAGS ?= -march=native -funroll-loops -fno-schedule-insns -O3 -fomit-frame-pointer -Wno-unused-result -s
+CFLAGS ?= -funroll-loops -fno-schedule-insns -O3 -fomit-frame-pointer -Wno-unused-result -s
 
 UNAME := $(shell uname -m)
 COMP  := none
@@ -38,21 +38,21 @@ endif
 
 all: tapio xorbox secretbox unbundle compressbox
 
-tapio: tapio.c strannex.h writestr.h strannex.c
+tapio: tapio.c strannex.h strannex.c
 	$(CC) $(CFLAGS) -o tapio tapio.c strannex.c
 	ln -sf tapio tunio
 
-xorbox: xorbox.c writestr.h
-	$(CC) $(CFLAGS) -o xorbox xorbox.c writestr.c
+xorbox: xorbox.c strannex.h
+	$(CC) $(CFLAGS) -o xorbox xorbox.c strannex.c
 
-secretbox: secretbox.c writestr.c strannex.c writestr.h strannex.h
-	$(CC) $(CFLAGS) $(LIBSODIUM) -o secretbox secretbox.c writestr.c 
+secretbox: secretbox.c strannex.c strannex.h
+	$(CC) $(CFLAGS) $(LIBSODIUM) -o secretbox secretbox.c strannex.c 
 
 unbundle: unbundle.c
 	$(CC) $(CFLAGS) -o unbundle unbundle.c
 
-compressbox: compressbox.c /usr/share/lzo/minilzo/minilzo.c writestr.h writestr.c
-	$(CC) $(CFLAGS) -I /usr/share/lzo/minilzo -o compressbox compressbox.c /usr/share/lzo/minilzo/minilzo.c writestr.c
+compressbox: compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.h strannex.c
+	$(CC) $(CFLAGS) -I /usr/share/lzo/minilzo -o compressbox compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.c
 
 clean:
 	rm -fv tapio tunio xorbox secretbox unbundle compressbox

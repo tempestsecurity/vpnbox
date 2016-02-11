@@ -35,10 +35,14 @@
     #define writeln_str_int(fd,str,value)  write_str((fd),(str)); write_int(fd,value); write(fd,"\n",1)
     #define writeln_int(fd,value)          write_int(fd,value); write(fd,"\n",1)
     #define write_str_int(fd,str,value)    write_str((fd),(str)); write_int(fd,value)
+    #define write_cstr_int(fd,str,value)   write_cstr((fd),(str)); write_int(fd,value)
+    #define writeln_cstr_int(fd,str,value) write_cstr((fd),(str)); write_int(fd,value); write(fd,"\n",1)
 
     #define writeln_str_uint(fd,str,value) write_str((fd),(str)); write_uint(fd,value); write(fd,"\n",1)
     #define writeln_uint(fd,value)         write_uint(fd,value); write(fd,"\n",1)
     #define write_str_uint(fd,str,value)   write_str((fd),(str)); write_uint(fd,value)
+    #define write_cstr_uint(fd,str,value)  write_cstr((fd),(str)); write_uint(fd,value)
+    #define writeln_cstr_uint(fd,str,value)   write_cstr((fd),(str)); write_uint(fd,value); write(fd,"\n",1)
 
     char *utoa_radix_nz(unsigned long value, char *out, int radix, int ndigits);
     void write_int(int fd, int value);
