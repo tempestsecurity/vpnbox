@@ -223,6 +223,10 @@ int main(int argc, char **argv)
             if (r > 20) { // ignore packet inferior to 21 bytes, keep alive
                 write(tap, buf, r);
             } else if (r <= 0) {
+                if (verbose) {
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO, ": stdin error.\n");
+                }
                 return 1;
             }
         }
@@ -231,6 +235,10 @@ int main(int argc, char **argv)
             if (r > 0) {
                 write(STDOUT_FILENO, buf, r);
             } else if (r <= 0) {
+                if (verbose) {
+                    write_str(STDERR_FILENO, progname);
+                    write_cstr(STDERR_FILENO, ": stdout error.\n");
+                }
                 return 2;
             }
         }
