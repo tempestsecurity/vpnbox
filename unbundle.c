@@ -19,7 +19,6 @@
 #include <stdio.h>
 void signalHandler(int signal)
 {
-    kill(getppid(), SIGPIPE);
     exit (0);
 }
 
@@ -95,7 +94,6 @@ int main(int argc, char **argv)
                             return 2;
                         }
                     }
-                    kill(getppid(), SIGPIPE);
                     return 0;
             }
 
@@ -133,7 +131,6 @@ int main(int argc, char **argv)
         if (r>0) {
             tail += r;
         } else {
-            kill(getppid(), SIGPIPE);
             return 1;
         }
         for (;;) {
@@ -180,6 +177,5 @@ int main(int argc, char **argv)
             }
         }
     }
-    kill(getppid(), SIGPIPE);
     return 0;
 }

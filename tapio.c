@@ -88,7 +88,6 @@ int tap_alloc(char *dev, char *name, int tun)
 
 void signalHandler(int signal)
 {
-    kill(getppid(), SIGPIPE);
     exit (0);
 }
 
@@ -128,6 +127,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    signal(SIGCHLD,signalHandler);
     signal(SIGPIPE,signalHandler);
 
     if (strcmp("tunio", progname)) tun = IFF_TAP;
@@ -245,7 +245,6 @@ int main(int argc, char **argv)
         if (keep && keep_count >= keep) {
             write_str(STDERR_FILENO, progname);
             writeln_str_uint(STDERR_FILENO, ": Keep count exceeded ", keep_count);
-            kill(getppid(), SIGPIPE);
             return 0;
         }
     }

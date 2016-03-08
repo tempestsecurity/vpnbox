@@ -20,7 +20,6 @@
 #include <stdio.h>
 void signalHandler(int signal)
 {
-    kill(getppid(), SIGPIPE);
     exit (0);
 }
 

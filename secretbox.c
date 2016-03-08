@@ -43,7 +43,6 @@ int update_replay_window (struct replay_s *rep, uint64_t sequence_number);
 
 void signalHandler(int signal)
 {
-    kill(getppid(), SIGPIPE);
     exit (0);
 }
 
@@ -182,7 +181,6 @@ int main(int argc, char **argv)
                             break;
                         }
                     }
-                    kill(getppid(), SIGPIPE);
                     return 0;
             }
             if (dup2(pipe_in[STDIN_FILENO], STDIN_FILENO) == -1) {
@@ -252,7 +250,6 @@ int main(int argc, char **argv)
             break;
         }
     }
-    kill(getppid(), SIGPIPE);
     return 0;
 }
 

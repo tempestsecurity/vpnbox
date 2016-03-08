@@ -8,10 +8,16 @@
 #include <linux/fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
 #include "strannex.h"
 
 #define BUF_SIZE	4096
 #define MAX_KEY_SIZE	512
+
+void signalHandler(int signal)
+{
+    exit (0);
+}
 
 void xor_func(unsigned char *buf, int size, unsigned char *key, int ksize)
 {
@@ -67,6 +73,9 @@ int main(int argc, char **argv)
         write_cstr(STDERR_FILENO,"params missing\n");
         return -1;
     }
+
+    signal(SIGCHLD,signalHandler);
+    signal(SIGPIPE,signalHandler);
 
     while ( (c=getopt(argc,argv,"k:K:")) != -1 ) {
         switch (c) {
@@ -157,7 +166,6 @@ int main(int argc, char **argv)
                     break;
                 }
             }
-            kill(getppid(), SIGPIPE);
             return 0;
     }
     close(pipe_in[STDOUT_FILENO]);
@@ -172,6 +180,5 @@ int main(int argc, char **argv)
             break;
         }
     }
-    kill(getppid(), SIGPIPE);
     return 0;
 }
