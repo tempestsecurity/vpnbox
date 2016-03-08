@@ -140,27 +140,36 @@ int main(int argc, char **argv)
             int n = tail - head + len2;
             if (n<=2) break;
             char *p = head2 ? head2 : head;
-            unsigned int len = 0xF00 & ((*p++)<<8);
-            if (head2 && p>=head2+len2) p = fifo;
-            len |= (*p)&0xFF;
-            // FIXME: if (len==0 || len>4000) ...
+            unsigned short len;
+            union c_short {
+               short s;
+               char c[2];
+            } s;
+            s.c[0] = *p++;
+            s.c[1] = (len2==1) ? *head : *p;
+            len = ntohs(s.s);
             if (n<len+2) break;
             if (len2) {
-                if (len2<2) break;
-                const struct iovec vec[2] = {
-                    { head2+2, len2-2      },
-                    { head,    len-len2+2  }
-                };
-                writev(pipe_in[STDOUT_FILENO],vec,2);
-                head += len-len2+2;
-                head2 = NULL;
-                len2  = 0;
+                if (len2<2) {
+                    write(pipe_in[STDOUT_FILENO],head+1,len);
+                    head += len+1;
+                    head2 = NULL;
+                    len2  = 0;
+                } else {
+                    const struct iovec vec[2] = {
+                        { head2+2, len2-2      },
+                        { head,    len-len2+2  }
+                    };
+                    writev(pipe_in[STDOUT_FILENO],vec,2);
+                    head += len-len2+2;
+                    head2 = NULL;
+                    len2  = 0;
+                }
             } else {
                 write(pipe_in[STDOUT_FILENO],head+2,len);
                 head += len+2;
             }
         }
-        if (len2 == 1) continue;
         if (head == tail) {
             head = tail = fifo;
         } else {
