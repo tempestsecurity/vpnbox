@@ -134,7 +134,7 @@ int main(int argc, char **argv)
                 return(-1);
             }
             close(pipe_out[STDIN_FILENO]);
-            return(execv(argv[0], argv));
+            return(execvp(argv[0], argv));
     }
     close(pipe_in [STDIN_FILENO]);
     close(pipe_out[STDOUT_FILENO]);

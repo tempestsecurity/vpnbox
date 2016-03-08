@@ -94,7 +94,7 @@ void signalHandler(int signal)
 
 int main(int argc, char **argv)
 {
-    char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[10], *progname;
+    char buf[BUF_SIZE], dev[IFNAMSIZ]="/dev/net/tun", tapdev[IFNAMSIZ], *progname;
     int tap, r, tun = IFF_TUN;
     int c, verbose = 0, interval = 0, keep = 0, keep_count = 0;
     time_t last_keep;
