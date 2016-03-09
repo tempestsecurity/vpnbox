@@ -127,7 +127,7 @@ int main(int argc, char **argv)
             write_str(STDERR_FILENO, progname);
             write_cstr(2,": Might not fit!\n"); return 3;
         }
-        r = read(STDIN_FILENO, tail, BUF_SIZE);
+        r = read(STDIN_FILENO, tail, BUF_SIZE-2);
         if (r>0) {
             tail += r;
         } else {
@@ -145,7 +145,8 @@ int main(int argc, char **argv)
             s.c[0] = *p++;
             s.c[1] = (len2==1) ? *head : *p;
             len = ntohs(s.s);
-            if (n<len+2 || len > (BUF_SIZE-2)) break;
+            if (len > (BUF_SIZE-2)) len = BUF_SIZE-2;
+            if (n<len+2) break;
             if (len2) {
                 if (len2<2) {
                     write(pipe_in[STDOUT_FILENO],head+1,len);
