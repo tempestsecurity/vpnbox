@@ -37,6 +37,7 @@ else
 endif
 
 all: tapio xorbox secretbox unbundle compressbox
+	tar cvzf vpnbox.tgz --owner=root --group=root tapio tunio xorbox secretbox unbundle compressbox
 
 tapio: tapio.c strannex.h strannex.c
 	$(CC) $(CFLAGS) -o tapio tapio.c strannex.c
@@ -55,4 +56,4 @@ compressbox: compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.h strannex.
 	$(CC) $(CFLAGS) -I /usr/share/lzo/minilzo -o compressbox compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.c
 
 clean:
-	rm -fv tapio tunio xorbox secretbox unbundle compressbox
+	rm -fv vpnbox.tgz tapio tunio xorbox secretbox unbundle compressbox
