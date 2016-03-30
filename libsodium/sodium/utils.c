@@ -46,7 +46,6 @@
 # define HAVE_PAGE_PROTECTION
 #endif
 
-static size_t page_size;
 static unsigned char canary[CANARY_SIZE];
 
 #ifdef HAVE_WEAK_SYMBOLS

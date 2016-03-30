@@ -4,8 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#define _GNU_SOURCE
-#include <linux/fcntl.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
@@ -14,7 +13,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
+#include "libsodium/include/core.h"
+#include "libsodium/include/randombytes.h"
+#include "libsodium/include/utils.h"
 #include "strannex.h"
+#include "pipe_handle.h"
 
 #define BUF_SIZE	4096
 #define MAX_KEY_SIZE	crypto_secretbox_KEYBYTES
@@ -49,7 +52,7 @@ void signalHandler(int signal)
 int main(int argc, char **argv)
 {
     unsigned char key[crypto_secretbox_KEYBYTES];
-    unsigned char crypt[BUF_SIZE], *send_buf;
+    unsigned char crypt[BUF_SIZE];
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
     int ksize = 0, c;
     char buf[BUF_SIZE], *progname;
@@ -135,8 +138,11 @@ int main(int argc, char **argv)
     signal(SIGCHLD,signalHandler);
     signal(SIGPIPE,signalHandler);
 
-    if (pipe2(pipe_in,  O_DIRECT) == -1) pipe(pipe_in);
-    if (pipe2(pipe_out, O_DIRECT) == -1) pipe(pipe_out);
+    if (pipe_handle(pipe_in) == -1 || pipe_handle(pipe_out) == -1) {
+        write_str(STDERR_FILENO, progname);
+        write_cstr(STDERR_FILENO,": unable to create pipe.\n");
+        return -1;
+    }
 
     r = fork();
     switch(r) {
@@ -168,7 +174,7 @@ int main(int argc, char **argv)
                         if (r > 0) {
                             memset(buf, 0, crypto_secretbox_ZEROBYTES);
                             sodium_increment(nonce, sizeof(uint64_t)+sizeof(uint32_t));
-                            int ret = crypto_secretbox_xsalsa20poly1305(crypt+8,buf,r+crypto_secretbox_ZEROBYTES,nonce,key);
+                            int ret = crypto_secretbox_xsalsa20poly1305(crypt+8,(unsigned char*)buf,r+crypto_secretbox_ZEROBYTES,nonce,key);
                             if (ret == 0) {
                                 memcpy(crypt, nonce, sizeof(nonce));
                                 write(STDOUT_FILENO, crypt, r+8+crypto_secretbox_ZEROBYTES);
@@ -234,7 +240,7 @@ int main(int argc, char **argv)
             seq -= init_seq;
             if (check_replay_window (&rep, seq)) {
                 memset(crypt+8, 0, crypto_secretbox_BOXZEROBYTES);
-                int ret = crypto_secretbox_xsalsa20poly1305_open(buf,crypt+8,r-8,nonce,key);
+                int ret = crypto_secretbox_xsalsa20poly1305_open((unsigned char*)buf,crypt+8,r-8,nonce,key);
                 if (ret == 0) {
                     update_replay_window (&rep, seq);
                     write(pipe_in[STDOUT_FILENO], buf+crypto_secretbox_ZEROBYTES, r-sizeof(nonce)-crypto_secretbox_BOXZEROBYTES);

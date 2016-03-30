@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include "strannex.h"
 
 char *_strannex(char *dst, char *src, char *dstend)
@@ -22,7 +23,6 @@ char *_strannex(char *dst, char *src, char *dstend)
 char *_strannex_uint(char *dst, unsigned long value, char *dstend)
 {
 char *p, *src, buf[10];
-unsigned size;
 
     src = buf;
     p=utoa_radix_nz(value,src,10,-10);

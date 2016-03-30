@@ -4,12 +4,12 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#define _GNU_SOURCE
-#include <linux/fcntl.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include "strannex.h"
+#include "pipe_handle.h"
 
 #define BUF_SIZE	4096
 #define MAX_KEY_SIZE	512
@@ -19,7 +19,7 @@ void signalHandler(int signal)
     exit (0);
 }
 
-void xor_func(unsigned char *buf, int size, unsigned char *key, int ksize)
+void xor_func(char *buf, int size, unsigned char *key, int ksize)
 {
     int i=0;
     while (--size >= 0) {
@@ -121,8 +121,11 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    if (pipe2(pipe_in,  O_DIRECT) == -1) pipe(pipe_in);
-    if (pipe2(pipe_out, O_DIRECT) == -1) pipe(pipe_out);
+    if (pipe_handle(pipe_in) == -1 || pipe_handle(pipe_out) == -1) {
+        write_str(STDERR_FILENO, progname);
+        write_cstr(STDERR_FILENO,": unable to create pipe.\n");
+        return -1;
+    }
 
     r = fork();
     switch(r) {

@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "strannex.h"
+#include "pipe_handle.h"
 
 #define MULT		4
 #define BUF_SIZE	4096
@@ -24,13 +25,12 @@ void signalHandler(int signal)
 
 int main(int argc, char **argv)
 {
-    int cr = 0, cs = 0;
     char buf[BUF_SIZE];
     char fifo[MULT*BUF_SIZE], *progname;
     char *head  = fifo, *tail  = fifo;
     char *head2 = NULL;
     unsigned int len2 = 0;
-    int fd, r, pipe_in[2], pipe_out[2];
+    int r, pipe_in[2], pipe_out[2];
     struct rlimit rlim;
 
     if ((progname = strrchr(argv[0], '/')) == NULL) {
@@ -45,15 +45,10 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    if (pipe2(pipe_in,  O_DIRECT) == -1) {
+    if (pipe_handle(pipe_in) == -1 || pipe_handle(pipe_out) == -1) {
         write_str(STDERR_FILENO, progname);
-        write_cstr(STDERR_FILENO,": Warning, pipe2 pipe_in failed, using pipe.\n");
-        pipe(pipe_in);
-    }
-    if (pipe2(pipe_out, O_DIRECT) == -1) {
-        write_str(STDERR_FILENO, progname);
-        write_cstr(STDERR_FILENO,": Warning, pipe2 pipe_out failed, using pipe.\n");
-        pipe(pipe_out);
+        write_cstr(STDERR_FILENO,": unable to create pipe.\n");
+        return -1;
     }
 
     signal(SIGCHLD,signalHandler);

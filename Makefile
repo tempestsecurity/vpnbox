@@ -43,17 +43,20 @@ tapio: tapio.c strannex.h strannex.c
 	$(CC) $(CFLAGS) -o tapio tapio.c strannex.c
 	ln -sf tapio tunio
 
-xorbox: xorbox.c strannex.h
-	$(CC) $(CFLAGS) -o xorbox xorbox.c strannex.c
+xorbox: xorbox.c strannex.h pipe_handle.o
+	$(CC) $(CFLAGS) -o xorbox xorbox.c strannex.c pipe_handle.o
 
-secretbox: secretbox.c strannex.c strannex.h
-	$(CC) $(CFLAGS) $(LIBSODIUM) -o secretbox secretbox.c strannex.c 
+secretbox: secretbox.c strannex.c strannex.h pipe_handle.o
+	$(CC) $(CFLAGS) $(LIBSODIUM) -o secretbox secretbox.c strannex.c pipe_handle.o
 
-unbundle: unbundle.c
-	$(CC) $(CFLAGS) -o unbundle unbundle.c
+unbundle: unbundle.c pipe_handle.o
+	$(CC) $(CFLAGS) -o unbundle unbundle.c pipe_handle.o
 
-compressbox: compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.h strannex.c
-	$(CC) $(CFLAGS) -I /usr/share/lzo/minilzo -o compressbox compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.c
+compressbox: compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.h strannex.c pipe_handle.o
+	$(CC) $(CFLAGS) -I /usr/share/lzo/minilzo -o compressbox compressbox.c /usr/share/lzo/minilzo/minilzo.c strannex.c pipe_handle.o
+
+pipe_handle.o: pipe_handle.c pipe_handle.h
+	$(CC) $(CFLAGS) -c pipe_handle.c
 
 clean:
-	rm -fv vpnbox.tgz tapio tunio xorbox secretbox unbundle compressbox
+	rm -fv vpnbox.tgz tapio tunio xorbox secretbox unbundle compressbox pipe_handle.o

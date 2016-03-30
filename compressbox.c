@@ -13,6 +13,7 @@
 #include <minilzo.h>
 #include <string.h>
 #include "strannex.h"
+#include "pipe_handle.h"
 
 #define MULT		4
 #define BUF_SIZE	4096
@@ -25,7 +26,8 @@ void signalHandler(int signal)
 
 int main(int argc, char **argv)
 {
-    char in[BUF_SIZE], out[BUF_SIZE], work[LZO1X_1_MEM_COMPRESS], *progname;
+    char *progname;
+    unsigned char in[BUF_SIZE], out[BUF_SIZE], work[LZO1X_1_MEM_COMPRESS];
     lzo_uint ulen;
     int r, pipe_in[2], pipe_out[2];
     struct rlimit rlim;
@@ -42,15 +44,15 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    if (pipe2(pipe_in,  O_DIRECT) == -1) {
+    if (pipe_handle(pipe_in) == -1) {
         write_str(STDERR_FILENO, progname);
-        write_cstr(STDERR_FILENO,": Warning, pipe2 pipe_in failed, using pipe.\n");
-        pipe(pipe_in);
+        write_cstr(STDERR_FILENO,": pipe failed.\n");
+        return -1;
     }
-    if (pipe2(pipe_out, O_DIRECT) == -1) {
+    if (pipe_handle(pipe_out) == -1) {
         write_str(STDERR_FILENO, progname);
-        write_cstr(STDERR_FILENO,": Warning, pipe2 pipe_out failed, using pipe.\n");
-        pipe(pipe_out);
+        write_cstr(STDERR_FILENO,": pipe failed.\n");
+        return -1;
     }
 
     signal(SIGCHLD,signalHandler);
